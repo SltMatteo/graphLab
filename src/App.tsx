@@ -1,16 +1,20 @@
 import { useMemo, useState } from 'react';
 import GraphViewer from './components/GraphViewer';
-import { createRandomGraph } from './lib/createRandomGraph';
+import { createRandomGraph, type GraphLayout } from './lib/createRandomGraph';
 
 const DEFAULT_NODES = 50;
 const DEFAULT_EDGES = 80;
+const DEFAULT_LAYOUT: GraphLayout = 'circular';
 
 export default function App() {
   const [nodeCountInput, setNodeCountInput] = useState<number>(DEFAULT_NODES);
   const [edgeCountInput, setEdgeCountInput] = useState<number>(DEFAULT_EDGES);
+  const [layout, setLayout] = useState<GraphLayout>(DEFAULT_LAYOUT);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [graphConfig, setGraphConfig] = useState({
     nodeCount: DEFAULT_NODES,
     edgeCount: DEFAULT_EDGES,
+    seed: Date.now(),
   });
 
   const maxEdges = useMemo(() => {
@@ -19,8 +23,18 @@ export default function App() {
   }, [nodeCountInput]);
 
   const graph = useMemo(() => {
-    return createRandomGraph(graphConfig.nodeCount, graphConfig.edgeCount);
-  }, [graphConfig]);
+    return createRandomGraph(graphConfig.nodeCount, graphConfig.edgeCount, layout, graphConfig.seed);
+  }, [graphConfig, layout]);
+
+  const selectedNodeDetails = useMemo(() => {
+    if (!selectedNode || !graph.hasNode(selectedNode)) return null;
+
+    return {
+      id: selectedNode,
+      degree: graph.degree(selectedNode),
+      neighbors: graph.neighbors(selectedNode),
+    };
+  }, [graph, selectedNode]);
 
   const handleGenerate = () => {
     const safeNodes = Math.max(0, Math.floor(nodeCountInput));
@@ -30,7 +44,9 @@ export default function App() {
     setGraphConfig({
       nodeCount: safeNodes,
       edgeCount: cappedEdges,
+      seed: Date.now(),
     });
+    setSelectedNode(null);
   };
 
   return (
@@ -63,6 +79,22 @@ export default function App() {
           <small>Maximum simple undirected edges for this node count: {maxEdges}</small>
         </div>
 
+        <div className="control-group">
+          <label htmlFor="layout">Layout</label>
+          <select
+            id="layout"
+            value={layout}
+            onChange={(event) => {
+              setLayout(event.target.value as GraphLayout);
+              setSelectedNode(null);
+            }}
+          >
+            <option value="circular">Circular</option>
+            <option value="random">Random</option>
+            <option value="grid">Grid</option>
+          </select>
+        </div>
+
         <button className="primary-button" onClick={handleGenerate}>
           Generate graph
         </button>
@@ -72,12 +104,29 @@ export default function App() {
           <p>Nodes: {graph.order}</p>
           <p>Edges: {graph.size}</p>
         </div>
+
+        <div className="stats-card">
+          <h2>Selected node</h2>
+          {selectedNodeDetails ? (
+            <>
+              <p>ID: {selectedNodeDetails.id}</p>
+              <p>Degree: {selectedNodeDetails.degree}</p>
+              <p>
+                Neighbors:{' '}
+                {selectedNodeDetails.neighbors.length > 0
+                  ? selectedNodeDetails.neighbors.join(', ')
+                  : 'None'}
+              </p>
+            </>
+          ) : (
+            <p>No node selected</p>
+          )}
+        </div>
       </aside>
 
       <main className="viewer-panel">
-        <GraphViewer graph={graph} />
+        <GraphViewer graph={graph} selectedNode={selectedNode} onNodeSelect={setSelectedNode} />
       </main>
     </div>
   );
 }
-

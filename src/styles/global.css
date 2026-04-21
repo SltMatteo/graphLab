@@ -21,7 +21,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -36,6 +37,7 @@ input {
   padding: 1.25rem;
   border-right: 1px solid rgba(148, 163, 184, 0.2);
   background: #111827;
+  overflow-y: auto;
 }
 
 .sidebar h1 {
@@ -55,7 +57,8 @@ input {
   margin-top: 1rem;
 }
 
-.control-group input {
+.control-group input,
+.control-group select {
   border: 1px solid #334155;
   background: #0f172a;
   color: #e5e7eb;
@@ -92,6 +95,10 @@ input {
   font-size: 1rem;
 }
 
+.stats-card p {
+  overflow-wrap: anywhere;
+}
+
 .viewer-panel {
   min-width: 0;
   min-height: 0;
@@ -102,4 +109,3 @@ input {
   height: 100%;
   background: radial-gradient(circle at center, #111827 0%, #020617 100%);
 }
-
