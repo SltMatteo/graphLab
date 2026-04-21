@@ -1,0 +1,105 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #e5e7eb;
+  background: #0f172a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+}
+
+body {
+  overflow: hidden;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  width: 100%;
+  height: 100%;
+}
+
+.sidebar {
+  padding: 1.25rem;
+  border-right: 1px solid rgba(148, 163, 184, 0.2);
+  background: #111827;
+}
+
+.sidebar h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.subtitle {
+  margin-top: 0.25rem;
+  color: #94a3b8;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 1rem;
+}
+
+.control-group input {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e5e7eb;
+  border-radius: 0.5rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.control-group small {
+  color: #94a3b8;
+  line-height: 1.4;
+}
+
+.primary-button {
+  width: 100%;
+  margin-top: 1.1rem;
+  border: 0;
+  border-radius: 0.6rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  background: #2563eb;
+  color: white;
+  font-weight: 600;
+}
+
+.stats-card {
+  margin-top: 1.2rem;
+  padding: 1rem;
+  border-radius: 0.8rem;
+  background: rgba(30, 41, 59, 0.8);
+}
+
+.stats-card h2 {
+  margin-top: 0;
+  font-size: 1rem;
+}
+
+.viewer-panel {
+  min-width: 0;
+  min-height: 0;
+}
+
+.graph-container {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at center, #111827 0%, #020617 100%);
+}
+
