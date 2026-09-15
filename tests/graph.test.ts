@@ -99,12 +99,15 @@ test('advanced analysis finds distances, cycles, cuts, and graph properties', ()
   assert.equal(pathMetrics.bridges.length, 4);
   assert.deepEqual(pathMetrics.articulationPoints, ['1', '2', '3']);
   assert.equal(pathMetrics.eulerian, 'trail');
+  assert.equal(pathMetrics.hamiltonian, 'path');
   assert.equal(pathMetrics.bipartite, true);
+  assert.ok(pathMetrics.bipartition);
   assert.equal(pathMetrics.planar, true);
 
   const cycle = analyzeGraph(createGraph({ ...baseConfig, kind: 'cycle', nodeCount: 5 }));
   assert.equal(cycle.girth, 5);
   assert.equal(cycle.eulerian, 'circuit');
+  assert.equal(cycle.hamiltonian, 'cycle');
   assert.equal(cycle.bipartite, false);
 
   const complete = analyzeGraph(createGraph({ ...baseConfig, kind: 'complete', nodeCount: 5 }));

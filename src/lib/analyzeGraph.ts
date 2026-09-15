@@ -27,7 +27,9 @@ export type GraphMetrics = {
   articulationPoints: string[];
   bridges: Array<[string, string]>;
   eulerian: 'circuit' | 'trail' | 'none';
+  hamiltonian: 'cycle' | 'path' | 'none' | 'unknown';
   bipartite: boolean;
+  bipartition: Record<string, 0 | 1> | null;
   planar: boolean;
   degreeDistribution: Array<{ degree: number; count: number }>;
   centrality: Record<string, NodeCentrality>;
@@ -170,7 +172,54 @@ function testBipartite(graph: Graph) {
       });
     }
   });
-  return bipartite;
+  return {
+    bipartite,
+    partition: bipartite ? Object.fromEntries(colors) as Record<string, 0 | 1> : null,
+  };
+}
+
+function testHamiltonian(graph: Graph): GraphMetrics['hamiltonian'] {
+  const nodes = graph.nodes();
+  const n = nodes.length;
+  if (n === 0) return 'none';
+  if (n === 1) return 'path';
+  if (findComponents(graph).length > 1) return 'none';
+  if (n > 16) {
+    // Dirac's theorem gives a definitive positive answer; other large cases
+    // remain unknown because exact Hamiltonian testing is exponential.
+    return nodes.every((node) => graph.degree(node) >= n / 2) ? 'cycle' : 'unknown';
+  }
+
+  const adjacency = nodes.map((node) => new Set(graph.neighbors(node).map((neighbor) => nodes.indexOf(neighbor))));
+  const fullMask = (1 << n) - 1;
+  const cycleMemo = new Set<number>();
+  const hasCycleFrom = (current: number, mask: number, start: number): boolean => {
+    if (mask === fullMask) return adjacency[current].has(start);
+    const key = mask * n + current;
+    if (cycleMemo.has(key)) return false;
+    for (const neighbor of adjacency[current]) {
+      if ((mask & (1 << neighbor)) === 0 && hasCycleFrom(neighbor, mask | (1 << neighbor), start)) return true;
+    }
+    cycleMemo.add(key);
+    return false;
+  };
+  if (n > 2 && hasCycleFrom(0, 1, 0)) return 'cycle';
+
+  for (let start = 0; start < n; start += 1) {
+    const pathMemo = new Set<number>();
+    const hasPathFrom = (current: number, mask: number): boolean => {
+      if (mask === fullMask) return true;
+      const key = mask * n + current;
+      if (pathMemo.has(key)) return false;
+      for (const neighbor of adjacency[current]) {
+        if ((mask & (1 << neighbor)) === 0 && hasPathFrom(neighbor, mask | (1 << neighbor))) return true;
+      }
+      pathMemo.add(key);
+      return false;
+    };
+    if (hasPathFrom(start, 1 << start)) return 'path';
+  }
+  return 'none';
 }
 
 function testPlanar(graph: Graph) {
@@ -274,6 +323,7 @@ export function analyzeGraph(graph: Graph): GraphMetrics {
   const eigenvector = calculateEigenvectorCentrality(graph);
   const betweennessNormalizer = nodes.length > 2 ? ((nodes.length - 1) * (nodes.length - 2)) / 2 : 1;
   const { articulationPoints, bridges } = findCuts(graph);
+  const bipartiteResult = testBipartite(graph);
   const nonIsolatedConnected = components.filter((component) => component.some((node) => graph.degree(node) > 0)).length <= 1;
   const oddDegrees = nodes.filter((node) => graph.degree(node) % 2 === 1).length;
   const maxPossibleEdges = (graph.order * (graph.order - 1)) / 2;
@@ -298,7 +348,9 @@ export function analyzeGraph(graph: Graph): GraphMetrics {
     eulerian: !nonIsolatedConnected || (oddDegrees !== 0 && oddDegrees !== 2)
       ? 'none'
       : oddDegrees === 0 ? 'circuit' : 'trail',
-    bipartite: testBipartite(graph),
+    hamiltonian: testHamiltonian(graph),
+    bipartite: bipartiteResult.bipartite,
+    bipartition: bipartiteResult.partition,
     planar: testPlanar(graph),
     degreeDistribution: [...degreeCounts.entries()]
       .sort(([first], [second]) => first - second)

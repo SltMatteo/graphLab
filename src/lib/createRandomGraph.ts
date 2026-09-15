@@ -108,6 +108,11 @@ function assignLayout(graph: Graph, layout: GraphLayout, rng: () => number) {
   circular.assign(graph, { center: 0, scale: 120 });
 }
 
+export function applyGraphLayout(graph: Graph, layout: GraphLayout, seed = Date.now()): Graph {
+  assignLayout(graph, layout, createSeededRandom(seed));
+  return graph;
+}
+
 function addRandomEdges(graph: Graph, edgeCount: number, rng: () => number) {
   const candidates: Array<[number, number]> = [];
 
