@@ -46,6 +46,23 @@ Graph analysis is implemented locally with explicit, testable algorithms. It inc
 - **Edit** turns the visualization into a graph canvas. Double-click empty space to add a vertex, drag vertices to move them, or use the panel to connect, rename, weight, and delete elements.
 - **Style** offers presets and fine-grained controls for vertex, edge, selection, background, pattern, and label colors, plus scale and visibility options.
 
+## Possible future features
+
+Graph Lab is intentionally useful without a backend, but there are several directions it could grow:
+
+- Import GraphML, GEXF, CSV, and pasted adjacency matrices; export SVG for publication-quality figures.
+- Support directed graphs, multigraphs, self-loops, and richer vertex and edge attributes.
+- Add force-directed, hierarchical, spectral, and planar layouts with pinnable vertices.
+- Visualize A*, Bellman–Ford, Floyd–Warshall, Prim, topological sorting, strongly connected components, and maximum-flow/minimum-cut algorithms.
+- Pair algorithm playback with synchronized pseudocode, data-structure state, invariants, and complexity explanations.
+- Add undo/redo, multi-selection, copy/paste, subgraph extraction, and keyboard-first editing.
+- Save named workspaces locally and create shareable URLs that reproduce a graph, layout, and appearance.
+- Compare two graphs or generator configurations side by side, including metric and degree-distribution differences.
+- Include a small library of real-world and classic example graphs, such as Petersen, utility, social, and transport networks.
+- Move expensive analysis into Web Workers so larger graphs remain interactive, with progress and cancellation controls.
+- Add guided graph-theory exercises and challenges that can be solved directly on the canvas.
+- Improve accessibility with high-contrast presets, color-blind-safe palettes, reduced-detail rendering, and a navigable textual graph view.
+
 ## Project structure
 
 ```text
