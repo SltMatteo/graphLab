@@ -1,12 +1,18 @@
 {
-  "name": "graph-lab-v1",
+  "name": "graph-lab",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
+  "description": "An interactive playground for generating, visualizing, and inspecting graphs.",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "check": "npm run test && npm run build",
     "preview": "vite preview"
+  },
+  "engines": {
+    "node": ">=22.12"
   },
   "dependencies": {
     "graphology": "^0.26.0",
@@ -18,9 +24,8 @@
   "devDependencies": {
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@vitejs/plugin-react": "^4.3.3",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.10"
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0"
   }
 }
-
