@@ -12,15 +12,20 @@ type Props = {
   onRenameNode: (name: string) => void;
   onDeleteNode: () => void;
   onDeleteEdge: () => void;
+  onUpdateEdgeWeight: (weight: number) => void;
 };
 
 export default function EditorPanel({
   graph, selectedNode, selectedEdge, connectMode, connectSource, onConnectModeChange,
-  onAddNode, onRenameNode, onDeleteNode, onDeleteEdge,
+  onAddNode, onRenameNode, onDeleteNode, onDeleteEdge, onUpdateEdgeWeight,
 }: Props) {
   const [name, setName] = useState(selectedNode ?? '');
+  const [weight, setWeight] = useState(1);
   useEffect(() => setName(selectedNode ?? ''), [selectedNode]);
   const edgeEnds = selectedEdge && graph.hasEdge(selectedEdge) ? graph.extremities(selectedEdge) : null;
+  useEffect(() => {
+    setWeight(selectedEdge && graph.hasEdge(selectedEdge) ? Number(graph.getEdgeAttribute(selectedEdge, 'weight') ?? 1) : 1);
+  }, [graph, selectedEdge]);
 
   return (
     <div className="editor-panel-content">
@@ -45,7 +50,11 @@ export default function EditorPanel({
       <div className="panel-divider" />
       <span className="eyebrow">Selected edge</span>
       {edgeEnds ? (
-        <div className="selected-edge"><strong>{edgeEnds[0]} — {edgeEnds[1]}</strong><button type="button" className="danger" onClick={onDeleteEdge}>Delete edge</button></div>
+        <form onSubmit={(event) => { event.preventDefault(); onUpdateEdgeWeight(weight); }}>
+          <div className="selected-edge"><strong>{edgeEnds[0]} — {edgeEnds[1]}</strong><button type="button" className="danger" onClick={onDeleteEdge}>Delete edge</button></div>
+          <div className="control-group"><label htmlFor="edge-weight">Positive weight</label><input id="edge-weight" type="number" min={0.01} step={0.01} value={weight} onChange={(event) => setWeight(Number(event.target.value))} /></div>
+          <button type="submit" className="panel-secondary">Update weight</button>
+        </form>
       ) : <p className="muted">Select an edge on the canvas.</p>}
     </div>
   );

@@ -263,6 +263,14 @@ export default function App() {
     applyGraphEdit(next, `Deleted edge ${source}–${target}`); setSelectedEdge(null);
   };
 
+  const updateSelectedEdgeWeight = (weight: number) => {
+    if (!selectedEdge || !graph.hasEdge(selectedEdge)) return;
+    if (!Number.isFinite(weight) || weight <= 0) { setNotice('Edge weights must be positive'); return; }
+    const next = graph.copy();
+    next.mergeEdgeAttributes(selectedEdge, { weight, label: String(weight) });
+    applyGraphEdit(next, `Updated edge weight to ${weight}`);
+  };
+
   const copyEdgeList = async () => {
     const edgeList = graph.edges().map((edge) => graph.extremities(edge).join(' ')).join('\n');
     try { await navigator.clipboard.writeText(edgeList); setNotice(`Copied ${graph.size} edge${graph.size === 1 ? '' : 's'}`); }
@@ -332,7 +340,7 @@ export default function App() {
             {mode === 'explore' && <ExplorePanel graph={graph} onPathChange={setVisualState} onCommunityColorsChange={setCommunityColors} />}
             {mode === 'algorithms' && <AlgorithmPanel graph={graph} onStepChange={handleAlgorithmStep} />}
             {mode === 'analysis' && <AdvancedAnalysis metrics={metrics} bipartitionVisible={bipartitionVisible} onToggleBipartition={() => setBipartitionVisible((visible) => !visible)} />}
-            {mode === 'edit' && <EditorPanel graph={graph} selectedNode={selectedNode} selectedEdge={selectedEdge} connectMode={connectMode} connectSource={connectSource} onConnectModeChange={(active) => { setConnectMode(active); setConnectSource(null); }} onAddNode={addNodeAtCenter} onRenameNode={renameSelectedNode} onDeleteNode={deleteSelectedNode} onDeleteEdge={deleteSelectedEdge} />}
+            {mode === 'edit' && <EditorPanel graph={graph} selectedNode={selectedNode} selectedEdge={selectedEdge} connectMode={connectMode} connectSource={connectSource} onConnectModeChange={(active) => { setConnectMode(active); setConnectSource(null); }} onAddNode={addNodeAtCenter} onRenameNode={renameSelectedNode} onDeleteNode={deleteSelectedNode} onDeleteEdge={deleteSelectedEdge} onUpdateEdgeWeight={updateSelectedEdgeWeight} />}
           </aside>
 
           {mode === 'explore' && <aside className={`node-inspector ${selectedNodeDetails ? 'has-selection' : ''}`} aria-live="polite">

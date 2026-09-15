@@ -86,7 +86,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
     if (!containerRef.current) return;
 
     const renderer = new Sigma(graph, containerRef.current, {
-      renderEdgeLabels: false,
+      renderEdgeLabels: true,
       allowInvalidContainer: false,
       defaultNodeType: 'circle',
       enableEdgeEvents: true,
