@@ -140,6 +140,8 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
       labelSize: 12,
       minCameraRatio: 0.08,
       maxCameraRatio: 12,
+      zoomingRatio: 1.2,
+      doubleClickZoomingRatio: 1.2,
       nodeReducer: (node, data) => {
         const currentAppearance = appearanceRef.current;
         const baseSize = data.size * currentAppearance.nodeScale;
@@ -270,8 +272,8 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
   const moveCamera = (action: 'in' | 'out' | 'reset') => {
     const camera = rendererRef.current?.getCamera();
     if (!camera) return;
-    if (action === 'in') void camera.animatedZoom({ duration: 180 });
-    if (action === 'out') void camera.animatedUnzoom({ duration: 180 });
+    if (action === 'in') void camera.animatedZoom({ factor: 1.2, duration: 180 });
+    if (action === 'out') void camera.animatedUnzoom({ factor: 1.2, duration: 180 });
     if (action === 'reset') void camera.animatedReset({ duration: 240 });
   };
 

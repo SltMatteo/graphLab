@@ -45,6 +45,7 @@ const MODES: Array<{ value: WorkspaceMode; label: string }> = [
 ];
 
 const COLORING_PALETTE = ['#67d7e2', '#ffb86b', '#d98cff', '#8ce99a', '#ffd166', '#79a8ff', '#ff7f96'];
+const STOCHASTIC_GRAPH_KINDS = new Set<GraphKind>(['random', 'erdos-renyi', 'random-tree', 'random-regular', 'preferential', 'small-world']);
 const randomSeed = () => Math.floor(Math.random() * 999_999_999) + 1;
 const formatMetric = (value: number, digits = 2) => new Intl.NumberFormat('en-US', { maximumFractionDigits: digits }).format(value);
 
@@ -66,6 +67,9 @@ export default function App() {
   const [algorithmStep, setAlgorithmStep] = useState<AlgorithmStep | null>(null);
   const [bipartitionVisible, setBipartitionVisible] = useState(false);
   const [appearance, setAppearance] = useState<GraphAppearance>(loadAppearance);
+  const [sidebarMasked, setSidebarMasked] = useState(false);
+  const [toolPanelMasked, setToolPanelMasked] = useState(false);
+  const [inspectorMasked, setInspectorMasked] = useState(false);
   const viewerRef = useRef<GraphViewerHandle>(null);
 
   const metrics = useMemo(() => analyzeGraph(graph), [graph]);
@@ -142,7 +146,7 @@ export default function App() {
       ...draft,
       nodeCount,
       edgeCount: draft.kind === 'random' ? getEdgeCount(draft.kind, nodeCount, draft.edgeCount) : draft.edgeCount,
-      seed: normalizeSeed(draft.seed),
+      seed: STOCHASTIC_GRAPH_KINDS.has(draft.kind) ? randomSeed() : normalizeSeed(draft.seed),
       layoutSeed: draft.layout === 'random' ? randomSeed() : draft.layoutSeed,
       probability: Math.min(1, Math.max(0, draft.probability || 0)),
       attachmentCount: nodeCount > 1 ? Math.min(nodeCount - 1, Math.max(1, Math.floor(draft.attachmentCount || 1))) : 1,
@@ -155,13 +159,6 @@ export default function App() {
     setGraph(createGraph(nextConfig));
     setGraphTitle(GRAPH_KINDS.find(({ value }) => value === nextConfig.kind)!.label);
     setSelectedNode(null); setSelectedEdge(null); setNodeQuery(''); clearVisuals();
-  };
-
-  const handleShuffle = () => {
-    const nextConfig = { ...config, seed: randomSeed(), layoutSeed: randomSeed() };
-    setDraft(nextConfig); setConfig(nextConfig); setGraph(createGraph(nextConfig));
-    setGraphTitle(appliedKind.label); setSelectedNode(null); setSelectedEdge(null); clearVisuals();
-    setNotice('Generated a new sample');
   };
 
   const handleLayoutChange = (layout: GraphLayout) => {
@@ -293,8 +290,8 @@ export default function App() {
   const exportPng = async () => { await viewerRef.current?.exportPng(); setNotice('Exported visualization as PNG'); };
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
+    <div className={`app-shell ${sidebarMasked ? 'sidebar-masked' : ''}`}>
+      <aside className="sidebar" aria-hidden={sidebarMasked}>
         <header className="brand"><div className="brand-mark" aria-hidden="true"><span /><span /><span /></div><div><h1>Graph Lab</h1><p>Interactive graph playground</p></div></header>
 
         <form className="builder" onSubmit={handleGenerate}>
@@ -315,7 +312,7 @@ export default function App() {
           {draft.kind === 'random-regular' && <div className="control-group"><label htmlFor="regular-degree">Degree per vertex</label><input id="regular-degree" type="number" min={0} max={Math.max(0, draft.nodeCount - 1)} value={draft.regularDegree} onChange={(event) => setDraft((current) => ({ ...current, regularDegree: Number(event.target.value) }))} /><small>Vertex count × degree must be even; invalid values round down.</small></div>}
           {draft.kind === 'small-world' && <div className="input-grid model-parameters"><div className="control-group"><label htmlFor="neighbor-count">Neighbor degree</label><input id="neighbor-count" type="number" min={2} max={Math.max(2, draft.nodeCount - 1)} step={2} value={draft.neighborCount} onChange={(event) => setDraft((current) => ({ ...current, neighborCount: Number(event.target.value) }))} /></div><div className="control-group"><label htmlFor="rewire-probability">Rewire probability</label><input id="rewire-probability" type="number" min={0} max={1} step={0.05} value={draft.rewireProbability} onChange={(event) => setDraft((current) => ({ ...current, rewireProbability: Number(event.target.value) }))} /></div></div>}
           <p className="field-note">Up to {MAX_NODES} vertices · {parameterNote}</p>
-          <div className="control-group"><div className="label-row"><label htmlFor="seed">Seed</label><button type="button" className="text-button" onClick={handleShuffle}>New sample</button></div><input id="seed" type="number" min={1} value={draft.seed} onChange={(event) => setDraft((current) => ({ ...current, seed: Number(event.target.value) }))} /></div>
+          <div className="control-group"><label htmlFor="seed">Seed</label><input id="seed" type="number" min={1} value={draft.seed} onChange={(event) => setDraft((current) => ({ ...current, seed: Number(event.target.value) }))} /></div>
           <button className="primary-button" type="submit">Generate graph<span aria-hidden="true">↗</span></button>
         </form>
 
@@ -332,6 +329,7 @@ export default function App() {
         </section>
         <p className="sidebar-footnote">Simple · undirected · no self-loops</p>
       </aside>
+      <button type="button" className="sidebar-mask-toggle" aria-label={sidebarMasked ? 'Show controls' : 'Hide controls'} aria-pressed={sidebarMasked} onClick={() => setSidebarMasked((masked) => !masked)}>×</button>
 
       <main className="workspace">
         <header className="workspace-header">
@@ -349,16 +347,20 @@ export default function App() {
         >
           <GraphViewer ref={viewerRef} graph={graph} appearance={appearance} selectedNode={selectedNode} selectedEdge={selectedEdge} editMode={mode === 'edit'} visualState={visualState} nodeColors={displayNodeColors} onNodeSelect={handleNodeSelect} onEdgeSelect={setSelectedEdge} onGraphEdit={applyGraphEdit} />
 
-          <aside className={`tool-panel ${mode === 'analysis' ? 'analysis-tool-panel' : ''} ${mode === 'appearance' ? 'appearance-tool-panel' : ''}`}>
-            {mode === 'explore' && <ExplorePanel graph={graph} onPathChange={setVisualState} onCommunityColorsChange={setCommunityColors} />}
-            {mode === 'algorithms' && <AlgorithmPanel graph={graph} onStepChange={handleAlgorithmStep} />}
-            {mode === 'analysis' && <AdvancedAnalysis metrics={metrics} bipartitionVisible={bipartitionVisible} onToggleBipartition={() => setBipartitionVisible((visible) => !visible)} />}
-            {mode === 'edit' && <EditorPanel graph={graph} selectedNode={selectedNode} selectedEdge={selectedEdge} connectMode={connectMode} connectSource={connectSource} onConnectModeChange={(active) => { setConnectMode(active); setConnectSource(null); }} onAddNode={addNodeAtCenter} onRenameNode={renameSelectedNode} onDeleteNode={deleteSelectedNode} onDeleteEdge={deleteSelectedEdge} onUpdateEdgeWeight={updateSelectedEdgeWeight} />}
-            {mode === 'appearance' && <AppearancePanel appearance={appearance} onChange={setAppearance} />}
-          </aside>
+          <div className={`tool-panel-shell ${mode === 'analysis' ? 'analysis-tool-panel' : ''} ${mode === 'appearance' ? 'appearance-tool-panel' : ''} ${toolPanelMasked ? 'masked' : ''}`}>
+            <button type="button" className="panel-mask-toggle" aria-label={toolPanelMasked ? 'Show workspace panel' : 'Hide workspace panel'} aria-pressed={toolPanelMasked} onClick={() => setToolPanelMasked((masked) => !masked)}>×</button>
+            {!toolPanelMasked && <aside className="tool-panel">
+              {mode === 'explore' && <ExplorePanel graph={graph} onPathChange={setVisualState} onCommunityColorsChange={setCommunityColors} />}
+              {mode === 'algorithms' && <AlgorithmPanel graph={graph} onStepChange={handleAlgorithmStep} />}
+              {mode === 'analysis' && <AdvancedAnalysis metrics={metrics} bipartitionVisible={bipartitionVisible} onToggleBipartition={() => setBipartitionVisible((visible) => !visible)} />}
+              {mode === 'edit' && <EditorPanel graph={graph} selectedNode={selectedNode} selectedEdge={selectedEdge} connectMode={connectMode} connectSource={connectSource} onConnectModeChange={(active) => { setConnectMode(active); setConnectSource(null); }} onAddNode={addNodeAtCenter} onRenameNode={renameSelectedNode} onDeleteNode={deleteSelectedNode} onDeleteEdge={deleteSelectedEdge} onUpdateEdgeWeight={updateSelectedEdgeWeight} />}
+              {mode === 'appearance' && <AppearancePanel appearance={appearance} onChange={setAppearance} />}
+            </aside>}
+          </div>
 
-          {mode === 'explore' && <aside className={`node-inspector ${selectedNodeDetails ? 'has-selection' : ''}`} aria-live="polite">
-            {selectedNodeDetails ? <><div className="inspector-header"><div><span className="eyebrow">Selected vertex</span><h3>{selectedNodeDetails.id}</h3></div><button type="button" onClick={() => setSelectedNode(null)} aria-label="Clear selection">×</button></div><div className="degree-readout"><span>Degree</span><strong>{selectedNodeDetails.degree}</strong></div><p className="neighbor-label">Neighbors</p>{selectedNodeDetails.neighbors.length > 0 ? <div className="neighbor-list">{selectedNodeDetails.neighbors.slice(0, 24).map((neighbor) => <button type="button" key={neighbor} onClick={() => setSelectedNode(neighbor)}>{neighbor}</button>)}</div> : <p className="muted">This vertex is isolated.</p>}</> : <div className="inspector-empty"><div className="selection-symbol" aria-hidden="true">⌁</div><p>Select a vertex to inspect its neighborhood.</p></div>}
+          {mode === 'explore' && <aside className={`node-inspector ${selectedNodeDetails ? 'has-selection' : ''} ${inspectorMasked ? 'masked' : ''}`} aria-live="polite">
+            <button type="button" className="inspector-mask-toggle" aria-label={inspectorMasked ? 'Show selected vertex panel' : 'Hide selected vertex panel'} aria-pressed={inspectorMasked} onClick={() => setInspectorMasked((masked) => !masked)}>×</button>
+            {!inspectorMasked && (selectedNodeDetails ? <><div className="inspector-header"><div><span className="eyebrow">Selected vertex</span><h3>{selectedNodeDetails.id}</h3></div></div><div className="degree-readout"><span>Degree</span><strong>{selectedNodeDetails.degree}</strong></div><p className="neighbor-label">Neighbors</p>{selectedNodeDetails.neighbors.length > 0 ? <div className="neighbor-list">{selectedNodeDetails.neighbors.slice(0, 24).map((neighbor) => <button type="button" key={neighbor} onClick={() => setSelectedNode(neighbor)}>{neighbor}</button>)}</div> : <p className="muted">This vertex is isolated.</p>}</> : <div className="inspector-empty"><div className="selection-symbol" aria-hidden="true">⌁</div><p>Select a vertex to inspect its neighborhood.</p></div>)}
           </aside>}
         </div>
 
