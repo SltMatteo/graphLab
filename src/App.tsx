@@ -24,6 +24,7 @@ const DEFAULT_CONFIG: GraphConfig = {
   attachmentCount: 2,
   neighborCount: 4,
   rewireProbability: 0.2,
+  regularDegree: 4,
 };
 
 const LAYOUTS: Array<{ value: GraphLayout; label: string }> = [
@@ -60,6 +61,11 @@ export default function App() {
       return `About ${formatMetric(maxEdges * Math.min(1, Math.max(0, draft.probability)), 0)} expected edges`;
     }
     if (draft.kind === 'random-tree') return `Always ${Math.max(0, n - 1)} edges and one component`;
+    if (draft.kind === 'random-regular') {
+      let degree = Math.min(n - 1, Math.max(0, Math.floor(draft.regularDegree)));
+      if ((n * degree) % 2 !== 0) degree -= 1;
+      return `${degree}-regular · ${formatMetric((n * degree) / 2, 0)} edges`;
+    }
     if (draft.kind === 'preferential') return 'Each new vertex favors already well-connected vertices';
     if (draft.kind === 'small-world') return 'Neighbor degree is rounded down to an even number';
     return `${getEdgeCount(draft.kind, n, draft.edgeCount)} edges`;
@@ -100,6 +106,7 @@ export default function App() {
         : 1,
       neighborCount: Math.min(maxEvenNeighbors, Math.max(2, Math.floor(draft.neighborCount || 2))),
       rewireProbability: Math.min(1, Math.max(0, draft.rewireProbability || 0)),
+      regularDegree: Math.min(nodeCount - 1, Math.max(0, Math.floor(draft.regularDegree || 0))),
     };
     setDraft(nextConfig);
     setConfig(nextConfig);
@@ -252,6 +259,20 @@ export default function App() {
                 value={draft.attachmentCount}
                 onChange={(event) => setDraft((current) => ({ ...current, attachmentCount: Number(event.target.value) }))}
               />
+            </div>
+          )}
+          {draft.kind === 'random-regular' && (
+            <div className="control-group">
+              <label htmlFor="regular-degree">Degree per vertex</label>
+              <input
+                id="regular-degree"
+                type="number"
+                min={0}
+                max={Math.max(0, draft.nodeCount - 1)}
+                value={draft.regularDegree}
+                onChange={(event) => setDraft((current) => ({ ...current, regularDegree: Number(event.target.value) }))}
+              />
+              <small>The product of vertex count and degree must be even; invalid values round down.</small>
             </div>
           )}
           {draft.kind === 'small-world' && (

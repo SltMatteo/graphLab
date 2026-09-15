@@ -14,6 +14,7 @@ const baseConfig: GraphConfig = {
   attachmentCount: 2,
   neighborCount: 4,
   rewireProbability: 0.2,
+  regularDegree: 4,
 };
 
 function edgeList(config: GraphConfig) {
@@ -56,6 +57,12 @@ test('random tree, Erdős–Rényi, and growth models satisfy their invariants',
   assert.equal(smallWorld.size, 40);
 });
 
+test('random regular graphs give every vertex the requested degree', () => {
+  const graph = createGraph({ ...baseConfig, kind: 'random-regular', nodeCount: 20, regularDegree: 6 });
+  assert.equal(graph.size, 60);
+  graph.forEachNode((node) => assert.equal(graph.degree(node), 6));
+});
+
 test('scatter positions can change without changing seeded topology', () => {
   const first = createGraph({ ...baseConfig, layout: 'random', layoutSeed: 10 });
   const second = createGraph({ ...baseConfig, layout: 'random', layoutSeed: 11 });
@@ -80,4 +87,27 @@ test('analysis reports components, isolates, density, and degrees', () => {
   assert.equal(metrics.maxDegree, 2);
   assert.equal(metrics.averageDegree, 1.6);
   assert.equal(metrics.density, 0.4);
+});
+
+test('advanced analysis finds distances, cycles, cuts, and graph properties', () => {
+  const path = createGraph({ ...baseConfig, kind: 'path', nodeCount: 5 });
+  const pathMetrics = analyzeGraph(path);
+  assert.equal(pathMetrics.diameter, 4);
+  assert.equal(pathMetrics.radius, 2);
+  assert.deepEqual(pathMetrics.centers, ['2']);
+  assert.equal(pathMetrics.girth, null);
+  assert.equal(pathMetrics.bridges.length, 4);
+  assert.deepEqual(pathMetrics.articulationPoints, ['1', '2', '3']);
+  assert.equal(pathMetrics.eulerian, 'trail');
+  assert.equal(pathMetrics.bipartite, true);
+  assert.equal(pathMetrics.planar, true);
+
+  const cycle = analyzeGraph(createGraph({ ...baseConfig, kind: 'cycle', nodeCount: 5 }));
+  assert.equal(cycle.girth, 5);
+  assert.equal(cycle.eulerian, 'circuit');
+  assert.equal(cycle.bipartite, false);
+
+  const complete = analyzeGraph(createGraph({ ...baseConfig, kind: 'complete', nodeCount: 5 }));
+  assert.equal(complete.planar, false);
+  assert.equal(complete.clusteringCoefficient, 1);
 });

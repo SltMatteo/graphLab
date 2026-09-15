@@ -7,6 +7,7 @@ export type GraphKind =
   | 'random'
   | 'erdos-renyi'
   | 'random-tree'
+  | 'random-regular'
   | 'preferential'
   | 'small-world'
   | 'path'
@@ -25,6 +26,7 @@ export type GraphConfig = {
   attachmentCount: number;
   neighborCount: number;
   rewireProbability: number;
+  regularDegree: number;
 };
 
 export const MAX_NODES = 250;
@@ -33,6 +35,7 @@ export const GRAPH_KINDS: Array<{ value: GraphKind; label: string; description: 
   { value: 'random', label: 'Uniform random G(n, m)', description: 'Choose exactly m edges uniformly from all possible pairs.' },
   { value: 'erdos-renyi', label: 'Erdős–Rényi G(n, p)', description: 'Include every possible edge independently with probability p.' },
   { value: 'random-tree', label: 'Random tree', description: 'Sample a uniformly random labeled tree using a Prüfer sequence.' },
+  { value: 'random-regular', label: 'Random regular', description: 'Give every vertex the same degree, with a randomized labeling.' },
   { value: 'preferential', label: 'Preferential attachment', description: 'Grow a scale-free network where popular vertices attract new links.' },
   { value: 'small-world', label: 'Small world', description: 'Rewire a ring lattice to combine clustering with short paths.' },
   { value: 'path', label: 'Path', description: 'A chain where only consecutive vertices are adjacent.' },
@@ -158,6 +161,35 @@ function addRandomTreeEdges(graph: Graph, rng: () => number) {
   graph.addEdge(String(remaining[0]), String(remaining[1]));
 }
 
+function addRandomRegularEdges(graph: Graph, requestedDegree: number, rng: () => number) {
+  const n = graph.order;
+  if (n < 2) return;
+
+  let degree = Math.min(n - 1, Math.max(0, Math.floor(requestedDegree)));
+  if ((n * degree) % 2 !== 0) degree -= 1;
+  if (degree <= 0) return;
+
+  const vertices = Array.from({ length: n }, (_, index) => index);
+  for (let index = vertices.length - 1; index > 0; index -= 1) {
+    const selected = Math.floor(rng() * (index + 1));
+    [vertices[index], vertices[selected]] = [vertices[selected], vertices[index]];
+  }
+
+  for (let offset = 1; offset <= Math.floor(degree / 2); offset += 1) {
+    for (let index = 0; index < n; index += 1) {
+      const source = String(vertices[index]);
+      const target = String(vertices[(index + offset) % n]);
+      if (!graph.hasEdge(source, target)) graph.addEdge(source, target);
+    }
+  }
+
+  if (degree % 2 === 1) {
+    for (let index = 0; index < n / 2; index += 1) {
+      graph.addEdge(String(vertices[index]), String(vertices[index + n / 2]));
+    }
+  }
+}
+
 function addPreferentialAttachmentEdges(graph: Graph, requestedCount: number, rng: () => number) {
   const n = graph.order;
   if (n < 2) return;
@@ -275,6 +307,7 @@ export function createGraph(config: GraphConfig): Graph {
   if (config.kind === 'random') addRandomEdges(graph, edgeCount, rng);
   else if (config.kind === 'erdos-renyi') addErdosRenyiEdges(graph, config.probability, rng);
   else if (config.kind === 'random-tree') addRandomTreeEdges(graph, rng);
+  else if (config.kind === 'random-regular') addRandomRegularEdges(graph, config.regularDegree, rng);
   else if (config.kind === 'preferential') addPreferentialAttachmentEdges(graph, config.attachmentCount, rng);
   else if (config.kind === 'small-world') {
     addSmallWorldEdges(graph, config.neighborCount, config.rewireProbability, rng);
@@ -307,5 +340,6 @@ export function createRandomGraph(
     attachmentCount: 2,
     neighborCount: 4,
     rewireProbability: 0.2,
+    regularDegree: 4,
   });
 }
