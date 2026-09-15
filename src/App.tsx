@@ -1,12 +1,14 @@
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { type CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Graph from 'graphology';
 import AdvancedAnalysis from './components/AdvancedAnalysis';
 import AlgorithmPanel from './components/AlgorithmPanel';
+import AppearancePanel from './components/AppearancePanel';
 import EditorPanel from './components/EditorPanel';
 import ExplorePanel from './components/ExplorePanel';
 import GraphViewer, { type GraphViewerHandle, type GraphVisualState } from './components/GraphViewer';
 import { analyzeGraph } from './lib/analyzeGraph';
 import type { AlgorithmStep } from './lib/graphAlgorithms';
+import { loadAppearance, saveAppearance, type GraphAppearance } from './lib/appearance';
 import {
   applyGraphLayout,
   createGraph,
@@ -20,7 +22,7 @@ import {
   type GraphLayout,
 } from './lib/createRandomGraph';
 
-type WorkspaceMode = 'explore' | 'algorithms' | 'analysis' | 'edit';
+type WorkspaceMode = 'explore' | 'algorithms' | 'analysis' | 'edit' | 'appearance';
 
 const DEFAULT_CONFIG: GraphConfig = {
   kind: 'random', nodeCount: 36, edgeCount: 54, layout: 'circular', seed: 1738,
@@ -39,6 +41,7 @@ const MODES: Array<{ value: WorkspaceMode; label: string }> = [
   { value: 'algorithms', label: 'Algorithms' },
   { value: 'analysis', label: 'Analysis' },
   { value: 'edit', label: 'Edit' },
+  { value: 'appearance', label: 'Style' },
 ];
 
 const COLORING_PALETTE = ['#67d7e2', '#ffb86b', '#d98cff', '#8ce99a', '#ffd166', '#79a8ff', '#ff7f96'];
@@ -62,6 +65,7 @@ export default function App() {
   const [communityColors, setCommunityColors] = useState<Record<string, string>>();
   const [algorithmStep, setAlgorithmStep] = useState<AlgorithmStep | null>(null);
   const [bipartitionVisible, setBipartitionVisible] = useState(false);
+  const [appearance, setAppearance] = useState<GraphAppearance>(loadAppearance);
   const viewerRef = useRef<GraphViewerHandle>(null);
 
   const metrics = useMemo(() => analyzeGraph(graph), [graph]);
@@ -106,6 +110,8 @@ export default function App() {
     const timeout = window.setTimeout(() => setNotice(''), 2400);
     return () => window.clearTimeout(timeout);
   }, [notice]);
+
+  useEffect(() => saveAppearance(appearance), [appearance]);
 
   const clearVisuals = useCallback(() => {
     setVisualState(undefined);
@@ -333,14 +339,22 @@ export default function App() {
           <form className="node-search" onSubmit={handleNodeSearch}><label htmlFor="node-search">Find vertex</label><div><input id="node-search" placeholder="Vertex ID" value={nodeQuery} onChange={(event) => setNodeQuery(event.target.value)} /><button type="submit">Find</button></div></form>
         </header>
 
-        <div className="visualization">
-          <GraphViewer ref={viewerRef} graph={graph} selectedNode={selectedNode} selectedEdge={selectedEdge} editMode={mode === 'edit'} visualState={visualState} nodeColors={displayNodeColors} onNodeSelect={handleNodeSelect} onEdgeSelect={setSelectedEdge} onGraphEdit={applyGraphEdit} />
+        <div
+          className={`visualization pattern-${appearance.pattern} ${appearance.glow ? 'graph-glow' : ''}`}
+          style={{
+            '--canvas-background': appearance.backgroundColor,
+            '--canvas-pattern': appearance.patternColor,
+            '--canvas-accent': appearance.accentColor,
+          } as CSSProperties}
+        >
+          <GraphViewer ref={viewerRef} graph={graph} appearance={appearance} selectedNode={selectedNode} selectedEdge={selectedEdge} editMode={mode === 'edit'} visualState={visualState} nodeColors={displayNodeColors} onNodeSelect={handleNodeSelect} onEdgeSelect={setSelectedEdge} onGraphEdit={applyGraphEdit} />
 
-          <aside className={`tool-panel ${mode === 'analysis' ? 'analysis-tool-panel' : ''}`}>
+          <aside className={`tool-panel ${mode === 'analysis' ? 'analysis-tool-panel' : ''} ${mode === 'appearance' ? 'appearance-tool-panel' : ''}`}>
             {mode === 'explore' && <ExplorePanel graph={graph} onPathChange={setVisualState} onCommunityColorsChange={setCommunityColors} />}
             {mode === 'algorithms' && <AlgorithmPanel graph={graph} onStepChange={handleAlgorithmStep} />}
             {mode === 'analysis' && <AdvancedAnalysis metrics={metrics} bipartitionVisible={bipartitionVisible} onToggleBipartition={() => setBipartitionVisible((visible) => !visible)} />}
             {mode === 'edit' && <EditorPanel graph={graph} selectedNode={selectedNode} selectedEdge={selectedEdge} connectMode={connectMode} connectSource={connectSource} onConnectModeChange={(active) => { setConnectMode(active); setConnectSource(null); }} onAddNode={addNodeAtCenter} onRenameNode={renameSelectedNode} onDeleteNode={deleteSelectedNode} onDeleteEdge={deleteSelectedEdge} onUpdateEdgeWeight={updateSelectedEdgeWeight} />}
+            {mode === 'appearance' && <AppearancePanel appearance={appearance} onChange={setAppearance} />}
           </aside>
 
           {mode === 'explore' && <aside className={`node-inspector ${selectedNodeDetails ? 'has-selection' : ''}`} aria-live="polite">

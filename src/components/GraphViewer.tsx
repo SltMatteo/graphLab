@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import type Graph from 'graphology';
 import Sigma from 'sigma';
+import type { GraphAppearance } from '../lib/appearance';
 
 export type GraphVisualState = {
   activeNode?: string | null;
@@ -17,6 +18,7 @@ export type GraphViewerHandle = {
 
 type GraphViewerProps = {
   graph: Graph;
+  appearance: GraphAppearance;
   selectedNode: string | null;
   selectedEdge?: string | null;
   editMode?: boolean;
@@ -27,9 +29,50 @@ type GraphViewerProps = {
   onGraphEdit?: (graph: Graph, message: string, previous?: Graph) => void;
 };
 
+function blendHex(foreground: string, background: string, opacity: number) {
+  const channels = (color: string) => [1, 3, 5].map((index) => Number.parseInt(color.slice(index, index + 2), 16));
+  const foregroundChannels = channels(foreground);
+  const backgroundChannels = channels(background);
+  return `#${foregroundChannels.map((channel, index) => Math.round(channel * opacity + backgroundChannels[index] * (1 - opacity)).toString(16).padStart(2, '0')).join('')}`;
+}
+
+function paintBackground(context: CanvasRenderingContext2D, width: number, height: number, appearance: GraphAppearance) {
+  context.fillStyle = appearance.backgroundColor;
+  context.fillRect(0, 0, width, height);
+  if (appearance.glow) {
+    const glow = context.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) * 0.65);
+    glow.addColorStop(0, `${appearance.accentColor}1f`);
+    glow.addColorStop(1, `${appearance.accentColor}00`);
+    context.fillStyle = glow;
+    context.fillRect(0, 0, width, height);
+  }
+  if (appearance.pattern === 'plain') return;
+
+  context.save();
+  context.globalAlpha = 0.2;
+  context.strokeStyle = appearance.patternColor;
+  context.fillStyle = appearance.patternColor;
+  const spacing = 26 * Math.max(1, window.devicePixelRatio || 1);
+  if (appearance.pattern === 'dots') {
+    for (let x = spacing / 2; x < width; x += spacing) {
+      for (let y = spacing / 2; y < height; y += spacing) {
+        context.beginPath();
+        context.arc(x, y, Math.max(1, window.devicePixelRatio || 1), 0, Math.PI * 2);
+        context.fill();
+      }
+    }
+  } else {
+    context.lineWidth = Math.max(1, window.devicePixelRatio || 1);
+    for (let x = spacing; x < width; x += spacing) { context.beginPath(); context.moveTo(x, 0); context.lineTo(x, height); context.stroke(); }
+    for (let y = spacing; y < height; y += spacing) { context.beginPath(); context.moveTo(0, y); context.lineTo(width, y); context.stroke(); }
+  }
+  context.restore();
+}
+
 const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function GraphViewer(
   {
     graph,
+    appearance,
     selectedNode,
     selectedEdge = null,
     editMode = false,
@@ -50,6 +93,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
   const visualStateRef = useRef(visualState);
   const nodeColorsRef = useRef(nodeColors);
   const onGraphEditRef = useRef(onGraphEdit);
+  const appearanceRef = useRef(appearance);
 
   selectedNodeRef.current = selectedNode;
   selectedEdgeRef.current = selectedEdge;
@@ -57,6 +101,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
   visualStateRef.current = visualState;
   nodeColorsRef.current = nodeColors;
   onGraphEditRef.current = onGraphEdit;
+  appearanceRef.current = appearance;
 
   useImperativeHandle(ref, () => ({
     exportPng: async () => {
@@ -72,8 +117,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
       output.height = firstLayer.height;
       const context = output.getContext('2d');
       if (!context) return;
-      context.fillStyle = '#09171b';
-      context.fillRect(0, 0, output.width, output.height);
+      paintBackground(context, output.width, output.height, appearanceRef.current);
       layers.forEach((layer) => context.drawImage(layer, 0, 0));
       const link = document.createElement('a');
       link.download = `graph-lab-${Date.now()}.png`;
@@ -90,13 +134,17 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
       allowInvalidContainer: false,
       defaultNodeType: 'circle',
       enableEdgeEvents: true,
-      labelColor: { color: '#dff7fa' },
+      labelColor: { color: appearanceRef.current.labelColor },
       labelFont: 'Inter, ui-sans-serif, system-ui, sans-serif',
-      labelRenderedSizeThreshold: 11,
+      labelRenderedSizeThreshold: appearanceRef.current.showLabels ? 11 : Number.POSITIVE_INFINITY,
       labelSize: 12,
       minCameraRatio: 0.08,
       maxCameraRatio: 12,
       nodeReducer: (node, data) => {
+        const currentAppearance = appearanceRef.current;
+        const baseSize = data.size * currentAppearance.nodeScale;
+        const label = currentAppearance.showLabels ? data.label : '';
+        const forceLabel = currentAppearance.showLabels;
         const state = visualStateRef.current;
         const pathNodes = new Set(state?.pathNodes ?? []);
         const visited = new Set(state?.visited ?? []);
@@ -105,42 +153,45 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
         const mappedColor = nodeColorsRef.current?.[node];
 
         if (state?.activeNode === node) {
-          return { ...data, color: '#ffb86b', forceLabel: true, highlighted: true, size: data.size * 1.6, zIndex: 5 };
+          return { ...data, label, color: currentAppearance.accentColor, forceLabel, highlighted: true, size: baseSize * 1.6, zIndex: 5 };
         }
         if (pathNodes.has(node)) {
-          return { ...data, color: '#ffd166', forceLabel: true, highlighted: true, size: data.size * 1.35, zIndex: 4 };
+          return { ...data, label, color: '#ffd166', forceLabel, highlighted: true, size: baseSize * 1.35, zIndex: 4 };
         }
-        if (frontier.has(node)) return { ...data, color: '#d98cff', forceLabel: true, size: data.size * 1.2, zIndex: 3 };
-        if (visited.has(node)) return { ...data, color: '#67d7e2', forceLabel: true, size: data.size * 1.1, zIndex: 2 };
-        if (mappedColor) return { ...data, color: mappedColor, zIndex: 1 };
+        if (frontier.has(node)) return { ...data, label, color: '#d98cff', forceLabel, size: baseSize * 1.2, zIndex: 3 };
+        if (visited.has(node)) return { ...data, label, color: currentAppearance.nodeColor, forceLabel, size: baseSize * 1.1, zIndex: 2 };
+        if (mappedColor) return { ...data, label, color: mappedColor, size: baseSize, zIndex: 1 };
 
         if (focusedNode) {
           if (node === focusedNode) {
-            return { ...data, color: '#ffb86b', forceLabel: true, highlighted: true, size: data.size * 1.55, zIndex: 2 };
+            return { ...data, label, color: currentAppearance.accentColor, forceLabel, highlighted: true, size: baseSize * 1.55, zIndex: 2 };
           }
           if (graph.hasNode(focusedNode) && graph.hasEdge(focusedNode, node)) {
-            return { ...data, color: '#77e6ef', forceLabel: true, size: data.size * 1.15, zIndex: 1 };
+            return { ...data, label, color: blendHex(currentAppearance.nodeColor, '#ffffff', 0.72), forceLabel, size: baseSize * 1.15, zIndex: 1 };
           }
-          return { ...data, color: '#274651', label: '', zIndex: 0 };
+          return { ...data, color: blendHex(currentAppearance.nodeColor, currentAppearance.backgroundColor, 0.28), label: '', size: baseSize, zIndex: 0 };
         }
 
         if ((state?.visited || state?.frontier || state?.pathNodes) && !mappedColor) {
-          return { ...data, color: '#274651', label: '', zIndex: 0 };
+          return { ...data, color: blendHex(currentAppearance.nodeColor, currentAppearance.backgroundColor, 0.28), label: '', size: baseSize, zIndex: 0 };
         }
-        return data;
+        return { ...data, color: currentAppearance.nodeColor, label, size: baseSize };
       },
       edgeReducer: (edge, data) => {
+        const currentAppearance = appearanceRef.current;
+        const baseSize = data.size * currentAppearance.edgeThickness;
+        const label = currentAppearance.showLabels ? data.label : '';
         const state = visualStateRef.current;
-        if (selectedEdgeRef.current === edge) return { ...data, color: '#ffb86b', size: 2.2, zIndex: 5 };
-        if (state?.pathEdges?.includes(edge)) return { ...data, color: '#ffd166', size: 3, zIndex: 4 };
-        if (state?.edges?.includes(edge)) return { ...data, color: '#67d7e2', size: 2.3, zIndex: 3 };
+        if (selectedEdgeRef.current === edge) return { ...data, label, color: currentAppearance.accentColor, size: baseSize * 2.2, zIndex: 5 };
+        if (state?.pathEdges?.includes(edge)) return { ...data, label, color: '#ffd166', size: baseSize * 3, zIndex: 4 };
+        if (state?.edges?.includes(edge)) return { ...data, label, color: currentAppearance.nodeColor, size: baseSize * 2.3, zIndex: 3 };
         const focusedNode = hoveredNodeRef.current ?? selectedNodeRef.current;
-        if (!focusedNode) return data;
+        if (!focusedNode) return { ...data, label, color: currentAppearance.edgeColor, size: baseSize };
         const [source, target] = graph.extremities(edge);
         const isAdjacent = source === focusedNode || target === focusedNode;
         return isAdjacent
-          ? { ...data, color: '#4fb9c6', size: 1.7, zIndex: 1 }
-          : { ...data, color: '#172e36', size: 0.5, zIndex: 0 };
+          ? { ...data, label, color: currentAppearance.nodeColor, size: baseSize * 1.7, zIndex: 1 }
+          : { ...data, label: '', color: blendHex(currentAppearance.edgeColor, currentAppearance.backgroundColor, 0.24), size: baseSize * 0.5, zIndex: 0 };
       },
       zIndex: true,
     });
@@ -209,8 +260,12 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
   }, [graph, onEdgeSelect, onNodeSelect]);
 
   useEffect(() => {
-    rendererRef.current?.refresh();
-  }, [selectedNode, selectedEdge, visualState, nodeColors]);
+    const renderer = rendererRef.current;
+    if (!renderer) return;
+    renderer.setSetting('labelColor', { color: appearance.labelColor });
+    renderer.setSetting('labelRenderedSizeThreshold', appearance.showLabels ? 11 : Number.POSITIVE_INFINITY);
+    renderer.refresh();
+  }, [appearance, selectedNode, selectedEdge, visualState, nodeColors]);
 
   const moveCamera = (action: 'in' | 'out' | 'reset') => {
     const camera = rendererRef.current?.getCamera();

@@ -12,6 +12,8 @@
 - Random regular graph generation.
 - Topology locking for repeatable scatter-layout experiments.
 - PNG visualization export.
+- Persistent appearance presets and custom vertex, edge, selection, background, pattern, and label colors.
+- Canvas pattern, label visibility, vertex scale, edge thickness, and ambient glow controls.
 
 ### Changed
 

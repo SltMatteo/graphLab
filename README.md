@@ -13,7 +13,8 @@ An interactive browser playground for generating, visualizing, and inspecting gr
 - Find shortest paths and detect communities with label propagation and modularity scoring.
 - Inspect diameter, radius, graph center, girth, clustering, cuts, Eulerian and Hamiltonian properties, bipartiteness, exact planarity, degree distribution, and centrality.
 - Lock topology while rerolling scatter positions.
-- Copy an edge list or export Graphology JSON and a rendered PNG.
+- Personalize the canvas with five visual presets, custom colors, patterns, sizing, labels, and ambient glow. Preferences persist locally.
+- Copy an edge list or export Graphology JSON and a rendered PNG that preserves the chosen appearance.
 - Use the responsive interface on desktop, tablet, or mobile.
 
 ## Run locally
@@ -43,6 +44,7 @@ Graph analysis is implemented locally with explicit, testable algorithms. It inc
 - **Algorithms** provides play, pause, step, and timeline controls for five classic algorithms.
 - **Analysis** collects structural properties, a degree histogram, centrality rankings, and optional bipartition coloring.
 - **Edit** turns the visualization into a graph canvas. Double-click empty space to add a vertex, drag vertices to move them, or use the panel to connect, rename, weight, and delete elements.
+- **Style** offers presets and fine-grained controls for vertex, edge, selection, background, pattern, and label colors, plus scale and visibility options.
 
 ## Project structure
 
@@ -52,6 +54,7 @@ src/
 ├── lib/analyzeGraph.ts         # Structural metrics and centrality
 ├── lib/communities.ts          # Label-propagation community detection
 ├── lib/graphAlgorithms.ts      # Algorithms, playback steps, shortest paths
+├── lib/appearance.ts           # Presets, validation, and saved preferences
 ├── lib/createRandomGraph.ts    # Generators, layouts, seeded sampling
 ├── App.tsx                     # Workbench state, editor, and export actions
 └── styles/global.css           # Responsive visual system
