@@ -345,7 +345,7 @@ export default function App() {
             '--canvas-accent': appearance.accentColor,
           } as CSSProperties}
         >
-          <GraphViewer ref={viewerRef} graph={graph} appearance={appearance} selectedNode={selectedNode} selectedEdge={selectedEdge} editMode={mode === 'edit'} visualState={visualState} nodeColors={displayNodeColors} onNodeSelect={handleNodeSelect} onEdgeSelect={setSelectedEdge} onGraphEdit={applyGraphEdit} />
+          <GraphViewer ref={viewerRef} graph={graph} appearance={appearance} selectedNode={selectedNode} selectedEdge={selectedEdge} editMode={mode === 'edit'} connectMode={connectMode} visualState={visualState} nodeColors={displayNodeColors} onNodeSelect={handleNodeSelect} onEdgeSelect={setSelectedEdge} onGraphEdit={applyGraphEdit} />
 
           <div className={`tool-panel-shell ${mode === 'analysis' ? 'analysis-tool-panel' : ''} ${mode === 'appearance' ? 'appearance-tool-panel' : ''} ${toolPanelMasked ? 'masked' : ''}`}>
             <button type="button" className="panel-mask-toggle" aria-label={toolPanelMasked ? 'Show workspace panel' : 'Hide workspace panel'} aria-pressed={toolPanelMasked} onClick={() => setToolPanelMasked((masked) => !masked)}>×</button>

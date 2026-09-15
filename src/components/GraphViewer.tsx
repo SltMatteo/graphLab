@@ -22,6 +22,7 @@ type GraphViewerProps = {
   selectedNode: string | null;
   selectedEdge?: string | null;
   editMode?: boolean;
+  connectMode?: boolean;
   visualState?: GraphVisualState;
   nodeColors?: Record<string, string>;
   onNodeSelect: (node: string | null) => void;
@@ -76,6 +77,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
     selectedNode,
     selectedEdge = null,
     editMode = false,
+    connectMode = false,
     visualState,
     nodeColors,
     onNodeSelect,
@@ -90,6 +92,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
   const selectedEdgeRef = useRef(selectedEdge);
   const hoveredNodeRef = useRef<string | null>(null);
   const editModeRef = useRef(editMode);
+  const connectModeRef = useRef(connectMode);
   const visualStateRef = useRef(visualState);
   const nodeColorsRef = useRef(nodeColors);
   const onGraphEditRef = useRef(onGraphEdit);
@@ -98,6 +101,7 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
   selectedNodeRef.current = selectedNode;
   selectedEdgeRef.current = selectedEdge;
   editModeRef.current = editMode;
+  connectModeRef.current = connectMode;
   visualStateRef.current = visualState;
   nodeColorsRef.current = nodeColors;
   onGraphEditRef.current = onGraphEdit;
@@ -231,6 +235,9 @@ const GraphViewer = forwardRef<GraphViewerHandle, GraphViewerProps>(function Gra
     let graphBeforeDrag: Graph | null = null;
     renderer.on('downNode', ({ node, event }) => {
       if (!editModeRef.current) return;
+      // In connect mode, Sigma's normal click event selects the endpoint. Do not
+      // start a drag just because the pointer moves a fraction before mouseup.
+      if (connectModeRef.current) return;
       draggedNode = node;
       graphBeforeDrag = graph.copy();
       event.preventSigmaDefault();
